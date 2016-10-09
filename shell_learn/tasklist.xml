@@ -1,0 +1,35 @@
+<name>reinstall environment</name>
+<windows server=2003>
+    iis+php web
+    iis+php+mysql
+    apache
+    apache+php+mysql
+    sqlserver+navicate
+    mysql+navicate
+    dvbbs
+    datongguotu+localsqlserver
+    java_jdk1.6
+    tomcat
+    jspcms
+    dede
+    nginx
+    <env>iis,php,mysql,sqlserver,java,apache,tomcat</env>
+    <web>dvbbs,datongguotu,jspcms,dede</web>
+    
+</windows>
+<windows server=2008>
+    
+</windows>
+<window version=7>
+</window>
+<centos version=></centos>
+<kali ></kali>
+<白帽子讲Web安全>
+    <time>2016-10-04-01-10<page>40</page></time>
+</白帽子讲Web安全>
+<Windows黑客技术揭秘与攻防I>
+    <time>2016-10-04-01-16<page>目录</page></time>
+</Windows黑客技术揭秘与攻防I>
+<LinuxShell基础>
+    <time>2016-10-04-12-07<page>字符转换</page></time>
+</LinuxShell基础>
