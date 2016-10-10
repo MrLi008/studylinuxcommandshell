@@ -5,9 +5,12 @@ echo $envvar
 
 dirpath=`eval echo '${'"$envvar"'}' 2>/dev/null | tr : ' ' `
 echo dirpath:$dirpath
-for var in $dirpath #`eval echo '${'"$envvar"'}' 2>/dev/null | tr : ' ' `
+for v in $dirpath
 do
-    echo $var
+    for var in $dirpath #`eval echo '${'"$envvar"'}' 2>/dev/null | tr : ' ' `
+    do
+        echo $var,$v
+    done
 done
 echo end...
 

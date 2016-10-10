@@ -11,7 +11,7 @@
 
 # --all: find all file in path 
 
-IFS=:
+# IFS=
 
 OLDPATH="$PATH"
 PATH=/bin:/usr/bin
