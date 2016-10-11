@@ -43,13 +43,18 @@ build_one(){
     arg="`eval echo $i`"
 
     userhost="`echo $arg | sed -e 's/:.*$//'`"
+
+    user="`echo $userhost | sed -e 's/@.*$//'`"
     test "$user" = "$userhost" && user=$USER
     
     host="`echo $userhost | sed -e s'/^[^@]*@//'`"
 
     envfile="`echo $arg | sed -e 's/^[^,]*,//'`"
-    test "$envfile" = "$arg" && builddir=/tmp
-    
+    test "$envfile" = "$arg" && envfile=/dev/null
+
+    builddir="`echo $arg | sed -e 's/^.*://' -e 's/,.*//'`"
+    test "$builddir" = "$arg" && builddir=/tmp
+
     parbase=`basename $PARFILE`
 
     # NB: if changed, update find_package()
@@ -124,7 +129,7 @@ build_one(){
             env `$STRIPCOMMENTS $envfile | $JOINLINES` \
             $EXTRAENVIRONMENT \
             nice time ./configure $CONFIGUREFLAGS;
-        noce time make $ALLTARGETS && nice time make $CHECKTARGETS;
+        nice time make $ALLTARGETS && nice time make $CHECKTARGETS;
         echo '===================================================';
         echo 'Dick free report for $builddir/$package:';
         df $builddir | $INDENT;
@@ -175,15 +180,15 @@ find_package(){
         for subdir in "$base" ""
         do
             # NB: if this list changed, update build_one()
-        find_file $srcdir/$subdir/$1.tar.gz "tar xfz" && return
-        find_file $srcdir/$subdir/$1.tar.Z "tar xfz" && return 
-        find_file $srcdir/$subdir/$1.tar "tar xf" && return 
-        find_file $srcdir/$subdir/$1.tar.bz2 "tar xfj" return 
-        find_file $srcdir/$subdir/$1.taz "tar xfz" && return 
-        find_file $srcdir/$subdir/$1.zip "unzip -q" && return 
-        find_file $srcdir/$subdir/$1.jar "jar xf" && return 
+            find_file $srcdir/$subdir/$1.tar.gz "tar xfz" && return
+            find_file $srcdir/$subdir/$1.tar.Z "tar xfz" && return 
+            find_file $srcdir/$subdir/$1.tar "tar xf" && return 
+            find_file $srcdir/$subdir/$1.tar.bz2 "tar xfj" return 
+            find_file $srcdir/$subdir/$1.taz "tar xfz" && return 
+            find_file $srcdir/$subdir/$1.zip "unzip -q" && return 
+            find_file $srcdir/$subdir/$1.jar "jar xf" && return 
+        done
     done
-done
 }
 
 
@@ -195,6 +200,9 @@ set_userhosts(){
         if test -r "$u"
         then 
             ALTUSERHOSTS="$ALTUSERHOSTS $u"
+        elif test -r "$BUILDHOME/$u"
+        then 
+            ALTUSERHOSTS="$ALTUSERHOSTS $BUILDHOME/$u"
         else
             error "File not found: $u"
         fi
@@ -313,7 +321,7 @@ test -z "$SRCDIRS" && \
         
         
         
-        while test $#,-gt 0
+        while test $# -gt 0
 do
     case $1 in
         --all | --al | --a | -all | -al | -a )
