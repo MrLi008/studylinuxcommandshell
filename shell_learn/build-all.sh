@@ -200,8 +200,39 @@ fi
 
 test -z "$userhosts" && usage_and_exit 1
 
-for p in ""
+for p in "$@"
+do
+    find_package "$p"
 
+    if test -z "$PARFILE"
+    then
+        warning "Cannot find package file $p"
+        continue
+    fi
+
+    LOGDIR="$altlogdir"
+    if test -z "$LOGDIR" -o | -d "$LOGDIR" -o | -w "$LOGDIR"
+    then
+        for LOGDIR in "`dirname $PARFILE`/log/$p" $BUILDHOME/logs/$p \
+                        /usr/tmp /var/tmp /tmp
+    do
+        test -d "$LOGDIR" || mkdir -p "$LOGDIR" 2> /dev/null
+        test -d "$LOGDIR" -a -w "$LOGDIR" && break
+    done
+fi
+msg="Check build logs for $p in `hostname`:$LOGDIR"
+echo "$msg"
+
+echo "$msg" | $MAIL -s "$msg: $USER 2> /dev/null"
+
+for u in $userhosts
+do
+    build_one $u
+done
+
+test $EXITCODE -gt 125 && EXITCODE=125
+
+exit $EXITCODE 
 
 
 
