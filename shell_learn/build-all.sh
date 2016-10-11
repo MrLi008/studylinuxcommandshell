@@ -36,6 +36,206 @@ export PATH
 UMASK=002
 umask $UMASK
 
+# add functions
+build_one(){
+    # Grammar:
+    # build_one [user@]host[:build-directory][,envfile]
+    arg="`eval echo $i`"
+
+    userhost="`echo $arg | sed -e 's/:.*$//'`"
+    test "$user" = "$userhost" && user=$USER
+    
+    host="`echo $userhost | sed -e s'/^[^@]*@//'`"
+
+    envfile="`echo $arg | sed -e 's/^[^,]*,//'`"
+    test "$envfile" = "$arg" && builddir=/tmp
+    
+    parbase=`basename $PARFILE`
+
+    # NB: if changed, update find_package()
+    package="`echo $parbase | \
+        sed -e 's/[.]jar$//' \
+            -e 's/[.]tar[.]bz2$//' \
+            -e 's/[.]tar[.]gz$//' \
+            -e 's/[.]tar[.]Z$//' \
+            -e 's/[.]tar$//' \
+            -e 's/[.]tgz$//' \
+            -e 's/[.]zip$//'`"
+
+    # if we cannot see package file, copy
+    echo $SSH $SSHFLAGS $userhost "test -f $PARFILE"
+    if $SSH $SSHFLAGS $userhost "test -f $PARFILE"
+    then
+        parbaselocal=$PARFILE 
+    else
+        parbaselocal=$parbase 
+        echo $SCP $PARFILE $userhost:$builddir
+        $SCP $PARFILE $userhost:$builddir 
+    fi
+
+    # in remote host, tar file, configure
+    # check
+
+    sleep 1
+    now="`date $DATEFLAGS`"
+    logfile="$package.$host.$now.log"
+    nice $SSH $SSHFLAGS $userhost "
+        echo '===============================================';
+        test -f $BUILDBEGIN && . $BUILDBEGIN || \
+            test -f $BUILDBEGIN && source %BUILDBEGIN || \
+                true ;
+        echo 'Package:                  $package';
+        echo 'Archive:                  $PARFILE';
+        echo 'Date:                     $now';
+        echo 'Local user:               $USER';
+        echo 'Local host:               `hostname`';
+        echo 'Local log directory:      $LOGDIR';
+        echo 'Local log file:           $logfile';
+        echo 'Remote user:              $user';
+        echo 'Remote host:              $host';
+        echo 'Remote directory:         $builddir';
+        printf 'Remote date: '
+        date $DATEFLAGS;
+        printf 'Remote uname: ';
+        uname -a || true;
+        printf 'Remote gcc version: ';
+        gcc --version | head -n 1 || echo;
+        printf 'Remote g++ version:';
+        g++ --version | head -n 1 || echo;
+        echo 'Configure environment:    `$STRIPCOMMENTS $envfile | $JOINLINES`';
+        echo 'Extra environment:        $EXTRAENVIRONMENT';
+        echo 'Configure directory:      $CONFIGUREDIR';
+        echo 'Configure flags:          $CONFIGUREFLAGS';
+        echo 'Make all targets:         $ALLTARGETS';
+        echo 'Make check targetsL       $CHECKTARGETS';
+        echo 'Disk free report for      $builddir/$Package:';
+        df $builddir | $INDENT;
+        echo 'Environment:';
+        env | env LC_ALL=C sort | $INDENT'
+        echo '==================================================='
+        umask $UMASK;
+        cd $builddir || exit 1;
+        /bin/rm -rf $builddir/$package;
+        $PAR $parbaselocal;
+        test "$parbase" = "$parbaselocal" && /bin/rm -f $parbase;
+        cd $package/$CONFIGUREDIR || exit 1;
+        test -f configure && \
+            chmod a+x configure && \
+            env `$STRIPCOMMENTS $envfile | $JOINLINES` \
+            $EXTRAENVIRONMENT \
+            nice time ./configure $CONFIGUREFLAGS;
+        noce time make $ALLTARGETS && nice time make $CHECKTARGETS;
+        echo '===================================================';
+        echo 'Dick free report for $builddir/$package:';
+        df $builddir | $INDENT;
+        printf 'Remote date:        ';
+        date $DATEFLAGS;
+        cd ;
+        test -f $BUILDEND && . $BUILDEND || \
+            test -f $BUILDEND && source $BUILDEND || \
+            true;
+        echo '===================================================';
+
+    " < /dev/null > "$LOGDIR/$logfile" 2>$1 &
+}
+
+
+error(){
+    echo "$@" 1>&2
+    usage_and_exit 1
+}
+
+find_file(){
+    # Grammar:
+    #   find_file file program-and-args
+    # if find, return 0
+    # else return !0
+    if test -r "$1"
+    then 
+        PAR="$2"
+        PARFILE="$1"
+        return 0;
+    else
+        return 1
+
+    fi
+}
+
+find_package(){
+    # Grammar:
+    # find_package package-x.y.z
+    base=`echo "$1" | sed -e 's/[-_][.]*[0-9].*$//'`
+
+    PAR=
+    PARFILE=
+    for srcdir in $SRCDIRS 
+    do
+        test "$srcdir" = "." && srcdir="`pwd`"
+
+        for subdir in "$base" ""
+        do
+            # NB: if this list changed, update build_one()
+        find_file $srcdir/$subdir/$1.tar.gz "tar xfz" && return
+        find_file $srcdir/$subdir/$1.tar.Z "tar xfz" && return 
+        find_file $srcdir/$subdir/$1.tar "tar xf" && return 
+        find_file $srcdir/$subdir/$1.tar.bz2 "tar xfj" return 
+        find_file $srcdir/$subdir/$1.taz "tar xfz" && return 
+        find_file $srcdir/$subdir/$1.zip "unzip -q" && return 
+        find_file $srcdir/$subdir/$1.jar "jar xf" && return 
+    done
+done
+}
+
+
+set_userhosts(){
+    # Grammar:
+    # set_userhosts file(s)
+    for u in "$@"
+    do 
+        if test -r "$u"
+        then 
+            ALTUSERHOSTS="$ALTUSERHOSTS $u"
+        else
+            error "File not found: $u"
+        fi
+    done
+}
+
+usage(){
+    cat <<EOF
+Usage:
+    $PROGRAM [ --? ]
+            [ --all "..." ]
+            [ --check "..." ]
+            [ --configure "..." ]
+            [ --environment "..." ]
+            [ --help ]
+            [ --logdirectory dir ]
+            [ --on "[user@]host[:dir][,envfile] ..." ]
+            [ --source "dir ..." ]
+            [ --userhosts "file(s)" ]
+            [ --version ]
+            package(s)
+EOF
+}
+
+usage_and_exit(){
+    usage 
+    exit $1
+}
+
+version(){
+    echo "$PROGRAM version $VERSION"
+}
+
+warning(){
+    echo "$@" 1>&2
+    EXITCODE=`expr $EXITCODE + 1`
+}
+
+
+
+
 # initial variable
 ALLTARGETS=                 # Make target
 altlogdir=                  # Another location for the log file
@@ -103,9 +303,17 @@ test -z "$SRCDIRS" && \
             /tmp
             /usr/tmp
             /var/tmp
-        "
+"
 
-while test $#,-gt 0
+
+
+
+
+
+        
+        
+        
+        while test $#,-gt 0
 do
     case $1 in
         --all | --al | --a | -all | -al | -a )
