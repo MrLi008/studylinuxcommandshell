@@ -369,7 +369,8 @@ do
             ;;
         --source | --sourc | --sour | --sou | --so | --s | -source | -sourc | -sour | \
             -sou | -so | -s )
-            shift altsrcdirs="$altsrcdirs $1"
+            shift
+            altsrcdirs="$altsrcdirs $1"
             ;;
         --userhosts | --userhost | --userhos | --userho | --userh | --user | --use | --us | --u | \
             -userhosts | -userhost | -userhos | 0userho | -userh | -user | -use | -us | -u )
