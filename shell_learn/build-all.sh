@@ -36,8 +36,14 @@ export PATH
 UMASK=002
 umask $UMASK
 
+echo "Here begin....."
+
+
+
 # add functions
 build_one(){
+    echo "In build_one..."
+
     # Grammar:
     # build_one [user@]host[:build-directory][,envfile]
     arg="`eval echo $i`"
@@ -47,7 +53,7 @@ build_one(){
     user="`echo $userhost | sed -e 's/@.*$//'`"
     test "$user" = "$userhost" && user=$USER
     
-    host="`echo $userhost | sed -e s'/^[^@]*@//'`"
+    host="`echo $userhost | sed -e 's/^[^@]*@//'`"
 
     envfile="`echo $arg | sed -e 's/^[^,]*,//'`"
     test "$envfile" = "$arg" && envfile=/dev/null
@@ -151,6 +157,9 @@ error(){
 }
 
 find_file(){
+    echo "In find_file..."
+
+
     # Grammar:
     #   find_file file program-and-args
     # if find, return 0
@@ -167,6 +176,8 @@ find_file(){
 }
 
 find_package(){
+    echo "In find_package...."
+
     # Grammar:
     # find_package package-x.y.z
     base=`echo "$1" | sed -e 's/[-_][.]*[0-9].*$//'`
@@ -193,6 +204,8 @@ find_package(){
 
 
 set_userhosts(){
+    echo "In set_userhosts...."
+
     # Grammar:
     # set_userhosts file(s)
     for u in "$@"
@@ -237,7 +250,7 @@ version(){
 }
 
 warning(){
-    echo "$@" 1>&2
+    echo "warning:","$@" 1>&2
     EXITCODE=`expr $EXITCODE + 1`
 }
 
@@ -300,6 +313,10 @@ defaultuserhosts=$BUILDHOME/userhosts
 SRCDIRS="`$STRIPCOMMENTS $defaultdirectories 2> /dev/null`"
 
 
+echo "set source list catalog: ",$SRCDIRS
+
+
+
 # 
 test -z "$SRCDIRS" && \
     SRCDIRS="
@@ -318,10 +335,9 @@ test -z "$SRCDIRS" && \
 
 
 
-        
-        
-        
-        while test $# -gt 0
+echo "In while test...."
+
+while test $# -gt 0
 do
     case $1 in
         --all | --al | --a | -all | -al | -a )
@@ -395,6 +411,7 @@ done
 
 
 # send email
+echo "send email...."
 for MAIL in /bin/mailx /usr/bin/mailx /usr/sbin/mailx /usr/ucb/mailx \
             /bin/mail /usr/bin/mail
 do
@@ -408,14 +425,21 @@ SRCDIRS="$altsrcdirs $SRCDIRS"
 # get all altuserhosts
 if test -n "$userhosts"
 then
+    
     test -n "$ALTUSERHOSTS" &&
         userhosts="$userhosts `$STRIPCOMMENTS $ALTUSERHOSTS 2> /dev/null `"
 else
     test -z "$ALTUSERHOSTS" && ALTUSERHOSTS="$defaultuserhosts"
     userhosts="`$STRIPCOMMENTS $ALTUSERHOSTS 2> /dev/null`"
+    
 fi
 
+echo "userhosts:",$userhosts
 test -z "$userhosts" && usage_and_exit 1
+
+
+
+echo "In for p in "$@"......."
 
 for p in "$@"
 do
@@ -432,20 +456,23 @@ do
     then
         for LOGDIR in "`dirname $PARFILE`/log/$p" $BUILDHOME/logs/$p \
                         /usr/tmp /var/tmp /tmp
+        do
+            test -d "$LOGDIR" || mkdir -p "$LOGDIR" 2> /dev/null
+            test -d "$LOGDIR" -a -w "$LOGDIR" && break
+        done
+    fi
+    msg="Check build logs for $p in `hostname`:$LOGDIR"
+    echo "$msg"
+
+    echo "$msg" | $MAIL -s "$msg: $USER 2> /dev/null"
+
+    for u in $userhosts
     do
-        test -d "$LOGDIR" || mkdir -p "$LOGDIR" 2> /dev/null
-        test -d "$LOGDIR" -a -w "$LOGDIR" && break
+        build_one $u
     done
-fi
-msg="Check build logs for $p in `hostname`:$LOGDIR"
-echo "$msg"
-
-echo "$msg" | $MAIL -s "$msg: $USER 2> /dev/null"
-
-for u in $userhosts
-do
-    build_one $u
 done
+
+
 
 test $EXITCODE -gt 125 && EXITCODE=125
 
