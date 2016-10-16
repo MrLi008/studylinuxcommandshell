@@ -1,0 +1,8 @@
+tolstoy:x:2076:10:Leo Tolstoy:/home/tolstoy:/bin/bash
+betsy:x:1110:10:Getsy Ross:/home/betsy:/bin/bash
+bin:x:1:1:bin:/bin:/sbin/nologin
+adm:x:3:4:adm:/var/adm:/sbin/nologin
+george:x:1100:10:George Washington:/home/george:/bin/bash
+root:x:0:0:root:/root:/bin/bash
+daemon:x:2:2:daemon:/sbin:/sbin/nologin
+camus:x:112:10:Albert Camus:/home/camus:/bin/bash
